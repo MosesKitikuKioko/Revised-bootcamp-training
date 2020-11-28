@@ -1,0 +1,597 @@
+---
+title: "Pwani University Boot Camp"
+author: "Author : Moses Kioko"
+date: 'Date : `r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+    theme: united
+    highlight: tango
+    fontsize: 4pt
+    code_folding: show
+    toc: true
+    number_sections: true
+    code_download: true
+    toc_float:
+      collapsed: true
+---
+
+# Work space set up 
+Prior to scripting in R, we removing the objects in R memory to pave way for a new objects, we do this by help of `rm()` function.
+
+```{r}
+#clear objects 
+rm(list = ls(all=T))
+```
+
+For easier access of files in directory and organized saving objects in R memory we need to change default computer directory to a folder that we can easily trace and access. We do this my help of `setwd()` function.
+
+
+```{r message=FALSE, warning=FALSE}
+#setting working directory 
+
+#set working directory 
+setwd('D:/pwani data collection/eric/Revised Bootcamp/MAWW/Workshop')
+
+# print the current working directory 
+print(getwd())
+```
+
+# Packages
+
+Installing packages can be done by downloading the packages from CRAN repository to R environment.*Please note; if you had prior installation of this packages you can skip re-installing them*
+
+## Installing Packages 
++ Installing packages from CRAN 
+  - install single package *i.e* `install.package("lubridate")`
+  - install multiple packages by use of concatenator **c** *i,e* `install.packages(c('tidyverse','lubridate','forecast'))`
++ Installing Packages from Github 
+  - install devtools package *i.e* `install.packages("devtools")`
+  - load the library *i.e* `library(devtools)`
+  - install the package *i.e* `devtools::install_github("tidyverse/lubridate")`
+
+```{r message=FALSE, warning=FALSE}
+#installing packages 
+#install.packages(c('tidyverse','lubridate','janitor','viridis','forecast'), dependencies = TRUE)
+
+```
+
+Attached is a brief description of the packages that will be used in this session 
+
+Package                   | Description 
+--------------------------|------------------------------------------------------------------------------
+Tidyverse Package         | Manipulating data and plotting data [link](https://tidyverse.tidyverse.org/)
+Lubridate package         | Manipulating and changing date format [link](https://www.rdocumentation.org/packages/lubridate)
+Janitor Package           | Cleaning column names [link](https://www.rdocumentation.org/packages/janitor/versions/2.0.1)
+Viridis Package           | R color scale [link](https://www.rdocumentation.org/packages/viridis/versions/0.5.1)
+Forecast Package          | Handy in time-series [link](https://www.rdocumentation.org/packages/forecast/versions/8.13/topics/Arima)
+
+
+
+## Loading Packages 
+To use the functions in a package you should load the package into R memory and you can do that by ;
+
++ loading single package *i.e* `library()` command
++ Load multiple packages *i.e*  [pacman package](https://www.rdocumentation.org/packages/pacman/versions/0.5.1)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#load libraries
+library(tidyverse) # manipulating data, plotting package 
+library(lubridate) # changing date formats 
+library(janitor) # cleaning variable names 
+library(viridis) # coloring package 
+library(forecast) # for time series 
+```
+
+# Importing Data 
+Reading data into R memory using [readr package](https://www.rdocumentation.org/packages/readr/versions/1.3.1) housed in tidyverse package 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#import temperature data
+temp <- read_delim('temperature.csv',';',trim_ws = TRUE) %>% 
+  clean_names()
+
+#import precipitation data 
+precipitation <- read_delim('precipitation.csv', ';',trim_ws = TRUE) %>% 
+  clean_names()
+
+#import MAWM data 
+yield <- read_delim('MAWW_data.csv',';',trim_ws = TRUE) %>% 
+  clean_names()
+```
+
+# Temperature Data
+The are several steps that are involved to clean the temperature data ;
+
++ Change the date format using lubricate package 
++ Calculate the year from date 
++ Summarize the mean temperature per year and site 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#summarizing data 
+temp_per_site <- temp %>% 
+  mutate(date = as_date(exceldate,origin ="1899-01-01")) %>% 
+  mutate(year = year(date)) %>% 
+  group_by(site,year) %>% 
+  summarise(mean_temp = mean(value)) %>% 
+    dplyr::filter(year<2006)
+```
+
+## Scatter Graph (loess fit)
+To under understand general distribution of mean annual temperature we do a scatter plot with polynomial fit fuction 
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.height=6,fig.width=9,fig.align='center'}
+#Single plot the data 
+loess_temp <- temp_per_site %>% 
+  ggplot(aes(year,mean_temp))+
+  geom_point(color ='#8A0707')+
+  geom_smooth(stat = 'smooth',method = 'loess',color ='#c71585')+
+  theme_minimal()+
+  labs(title = "Mean Temperature",
+       subtitle = "Distribution of Mean Annual Temperature (1950 ~ 2005)",
+       y="Mean Temperature(degrees)",
+       x="Year",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "bottom",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'bold'),
+        axis.title = element_text(family = "serif"),
+        axis.line = element_line(colour = "grey30",size = .2),
+        axis.ticks = element_line(colour = "grey30"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+
+#save the plot 
+ggsave(plot= loess_temp,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Mean Annual Temperature Distribution Trend.jpg')
+
+#print the plot 
+print(loess_temp)
+```
+
+## Scatter Graph (linear fit)
+To under understand trend of mean annual temperature distribution we do a scatter plot with linear fit function 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.height=6,fig.width=9,fig.align='center'}
+#Single plot the data 
+# please exclude the anything above 2006
+lm_temp <- temp_per_site %>% 
+  ggplot(aes(year,mean_temp))+
+  geom_point(color ='#8A0707')+
+  geom_smooth(stat = 'smooth',method = 'lm',color ='#c71585')+
+  theme_minimal()+
+  labs(title = "Mean Temperature",
+       subtitle = "Distribution of Mean Annual Temperature (1950 ~ 2005)",
+       y="Mean Temperature(degrees)",
+       x="Year",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "bottom",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'bold'),
+        axis.title = element_text(family = "serif"),
+        axis.line = element_line(colour = "grey30",size = .2),
+        axis.ticks = element_line(colour = "grey30"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+
+#save the plot 
+ggsave(plot= lm_temp,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Mean Annual Temperature Distribution Linear Regression plot.jpg')
+
+#print the plot 
+print(lm_temp)
+```
+
+## Box Plot 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.height=7,fig.width=9,fig.align='center'}
+#distribution of temperature per site
+box_temp <- temp_per_site %>% 
+  ggplot(aes(site,mean_temp,color =site))+
+  geom_boxplot(outlier.shape = 18,
+               outlier.colour = "red",
+               outlier.alpha = 1,
+               outlier.size = 2.5)+
+  geom_jitter(shape=16, position=position_jitter(0.2),cex=0.9)+
+  scale_color_viridis_d()+
+  theme_minimal()+
+  labs(title = "Mean Temperature",
+       subtitle = "Distribution of Mean Annual Temperature per Site (1950 - 2005)",
+       y="Mean Temperature (degrees)",
+       x="Agricultural Site",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "none",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'italic'),
+        axis.title = element_text(family = "serif"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+
+
+#save the plot 
+ggsave(plot= box_temp,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Mean Annual Temperature Distribution boxplot plot.jpg')
+
+
+#plot the graph 
+print(box_temp)
+
+```
+
+## Bar Graph 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.height=7,fig.width=9,fig.align='center'}
+#distribution of temperature per site
+temp_bar_graph <- temp_per_site %>% 
+  ggplot(aes(year,mean_temp,fill =site))+
+  geom_col(position = 'dodge')+
+  facet_wrap(~site)+
+  scale_fill_viridis_d()+
+  theme_bw()+
+  labs(title = "Mean Temperature",
+       subtitle = "Distribution of Mean Annual Temperature per Site (1950 - 2005)",
+       y="Mean Temperature (degrees)",
+       x="Agricultural Site",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "none",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'italic'),
+        axis.title = element_text(family = "serif"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+
+
+#save the plot 
+ggsave(plot= temp_bar_graph,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Mean Annual Temperature Distribution bar graph.jpg')
+
+#plot the graph 
+print(temp_bar_graph)
+
+```
+
+
+# Precipitation Data 
+The following steps are used to tidy the precipitation data;
+
++ Change the date format using lubricate package 
++ Calculate the year from date 
++ Summarize the mean precipitation per year and site 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#cleaning precipitation data by formatting date and calculating mean precipitation per year and site 
+precip_per_site <- precipitation %>% 
+  mutate(date = as_date(exceldate,origin ="1899-01-01")) %>% 
+  mutate(year = year(date)) %>% 
+  group_by(site,year) %>% 
+  summarise(mean_precip = mean(value)) %>% 
+  clean_names() %>% 
+  dplyr::filter(year<2006)
+```
+
+## Scatter Plot (loess fit)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.height=7,fig.width=9,fig.align='center'}
+#Single plot the data 
+prep_polynominal <- precip_per_site %>% 
+  ggplot(aes(year,mean_precip))+
+  geom_point(color ='blue')+
+  geom_smooth(stat = 'smooth',method = 'loess',color ='steelblue')+
+  theme_minimal()+
+  labs(title = "Mean Precipitation",
+       subtitle = "Distribution of Mean Annual Precipitation (1950 ~ 2005)",
+       y="Mean Precipitation",
+       x="Year",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "bottom",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'italic'),
+        axis.title = element_text(family = "serif"),
+        axis.line = element_line(colour = "grey30",size = .2),
+        axis.ticks = element_line(colour = "grey30"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+
+
+#save the plot 
+ggsave(plot= prep_polynominal,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Mean Annual Precipitation Distribution polynomial fit graph.jpg')
+
+#plot the graph 
+print(prep_polynominal)
+```
+
+
+## Scatter plot (Linear fit)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.height=7,fig.width=9,fig.align='center'}
+#Single plot the data 
+prep_linear <- precip_per_site %>% 
+  ggplot(aes(year,mean_precip))+
+  geom_point(color ='blue')+
+  geom_smooth(stat = 'smooth',method = 'lm',color ='steelblue')+
+  theme_minimal()+
+  labs(title = "Mean Precipitation",
+       subtitle = "Distribution of Mean Annual Precipitation (1950 ~ 2005)",
+       y="Mean Precipitation",
+       x="Year",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "bottom",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'italic'),
+        axis.title = element_text(family = "serif"),
+        axis.line = element_line(colour = "grey30",size = .2),
+        axis.ticks = element_line(colour = "grey30"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+
+
+#save the plot 
+ggsave(plot= prep_linear,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Mean Annual Precipitation Distribution Linear fit graph.jpg')
+
+#plot the graph 
+print(prep_linear)
+```
+
+## Box Plot
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.height=7,fig.width=9,fig.align='center'}
+#distribution of precipitation per site
+scatter_boxplot_prep <- precip_per_site %>% 
+  ggplot(aes(site,mean_precip,color =site))+
+  geom_boxplot(outlier.shape = 18,
+               outlier.colour = "red",
+               outlier.alpha = 1,
+               outlier.size = 2.5)+
+  geom_jitter(shape=16, position=position_jitter(0.2),cex=0.9)+
+  scale_color_viridis_d()+
+  theme_minimal()+
+  labs(title = "Mean Precipitation",
+       subtitle = "Distribution of Mean Annual Precipitation per Site (1950 - 2005)",
+       y="Mean Precipitation",
+       x="Agricultural Site",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "none",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'italic'),
+        axis.title = element_text(family = "serif"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+
+#save the plot 
+ggsave(plot= scatter_boxplot_prep,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Mean Annual Precipitation Distribution box plot.jpg')
+
+#plot the graph 
+print(scatter_boxplot_prep)
+```
+
+## Bar Graph
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.height=7,fig.width=9,fig.align='center'}
+#distribution of precipitation per site
+prep_bar <- precip_per_site %>% 
+  ggplot(aes(year,mean_precip,fill =site))+
+  geom_col(position = 'dodge')+
+  facet_wrap(~site)+
+  scale_fill_viridis_d()+
+  theme_bw()+
+  labs(title = "Mean Precipitation",
+       subtitle = "Distribution of Mean Annual Precipitation per Site (1950 - 2005)",
+       y="Mean Precipitation (mm)",
+       x="Agricultural Site",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "none",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'italic'),
+        axis.title = element_text(family = "serif"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+#save the plot 
+ggsave(plot= prep_bar,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Mean Annual Precipitation bar graph.jpg')
+
+#plot the graph 
+print(prep_bar)
+```
+
+# Modelling Germany Wheat Data
+Linear models help us to generation a mathematical equation to map a relationship between two or more variables. We are going to use linear model to model the wheat data, there fore a couple of packages are going to be helpful in this section 
+
+Package                   | Description
+--------------------------|------------------------------------------------------
+GGally package            | Plotting correlation table [link](https://www.rdocumentation.org/packages/GGally/versions/1.5.0)
+MASS Package              | helps selecting most important variables for the model [link](https://www.rdocumentation.org/packages/MASS/versions/7.3-53) 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#install packages 
+#install.packages('MASS',dependencies = T)
+#install.packages('GGally',dependencies = T)
+
+#load the packages 
+library(MASS)
+library(GGally)
+```
+
+
+This section we;
+
+  + Select the data we would want to include in our model
+  + Rename the variables
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#rename variables 
+model_data <- yield %>% 
+  dplyr::select(yield = y_max,
+                altitude = alt,
+                fertilizer = n_fert,
+                `soil quality` = sq,
+                precipitation =map,
+                temperature = mat,acwb) 
+
+#save model names 
+model_names <- names(model_data[,2:6])
+```
+
+Plotting correlation plot
+
++ Why correlation plot 
+  - Distribution of data points within a variable 
+  - Get the correlation coefficients that informs on whether to drop or maintain the variable 
+    + Helps avoid Auto correlation problem 
+    + Feature engineering *(i.e advanced topic of excluding highly related variables as they don not inform much on prediction)*
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.align='center',fig.height=6,fig.height=6}
+#correlation plot 
+cor_plot <- GGally::ggpairs(model_data)
+
+#save the plot 
+ggsave(plot= cor_plot,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Correlation Plot.jpg')
+
+#plot the graph 
+print(cor_plot)
+```
+
+Linear Regression Assumption
+
+  + Normality of the y  variable ..etc
+
+To ensure we satisfy this requirement we do a density plot for wheat yield. 
+please note ; 
+
+  + Blue curve signifies the normal expected curve 
+  + Grey curve indicates the actual distribution of wheat yield 
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.align='center',fig.height=6,fig.width=9}
+density_plot <- model_data %>% 
+  ggplot(aes(yield))+
+  geom_density(size =.8,color ='grey30',fill ='grey')+
+  stat_function(fun=dnorm,color="blue",size =.8,args=list(mean=mean(model_data$yield), 
+                                  sd=sd(model_data$yield)))+
+  theme_minimal()+
+  labs(title = "Yield Distribution",
+       subtitle = "Normality check for wheat Distribution (1958 - 2009)",
+       y="",
+       x="",
+       caption = 'Author: Moses Kioko \n Profession: Data Analyst \n Pwani University Bootcamp @2020')+
+  theme(legend.position = "none",
+        legend.background = element_rect(color = "grey"),
+        legend.title =  element_blank(),
+        legend.text = element_text(family = "serif"),
+        plot.title = element_text(hjust = 0.5,family = "serif"),
+        axis.text = element_text(family = "serif", face = 'italic'),
+        axis.title = element_text(family = "serif"),
+        plot.subtitle = element_text(family = "serif",face = "italic",hjust = 0.5),
+        plot.caption = element_text(size = 8,color = "grey",family = "serif",face = 'italic'))
+
+#save the plot 
+ggsave(plot= density_plot,
+       height = 8.1,
+       width = 12,
+       dpi = 1000,
+       device = 'jpg',
+       filename = 'Wheat Yield Distribution Graph.jpg')
+
+#plot the graph 
+print(density_plot)
+```
+
+
+Running Linear/Multiple regression we use base R statistical function `lm()`. We run a regression model between the following variables **`r model_names`**. Please note; We regress the **yield** variable against the rest of the variables to establish the relationship.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.align='center',fig.width=9}
+#linear model 
+model = lm(yield ~ altitude+fertilizer+`soil quality`+precipitation+temperature,data=model_data) 
+
+
+#print out the summary of the model
+summary(model)
+```
+
+To determine the best model we deploy forward backward or both methods to determine the variables that highly contribute to the model, this approach uses variance to determine the variables.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.align='center',fig.width=9}
+#compute the best model
+best_model = MASS::stepAIC(model,direction = "both")
+
+#print out the summary of the model
+summary(best_model)
+
+```
+
+
+
+The final model equation $Yield = 41.049 + 0.167Ferterlizer + 0.243SoilQuality + 0.019Precipitation - 3.603Temperature$
